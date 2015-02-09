@@ -1,6 +1,6 @@
 /* Steepest descent optimizer test */
 
-#include "computeSD.h"
+#include "ComputeSD.h"
 
 void SD_grad(GradientOptimizerContext &rf)
 {
@@ -27,7 +27,7 @@ void SD_grad(GradientOptimizerContext &rf)
 
 bool FitCompare(GradientOptimizerContext &rf, double speed)
 {
-    Eigen::VectorXd prevEst(rf.fc->numParam), currEst(rf.fc->numParam);
+    Eigen::VectorXd prevEst(rf.fc->numParam);
     double refFit, newFit;
 
     memcpy(prevEst.data(), rf.fc->est, (rf.fc->numParam) * sizeof(double));
@@ -36,14 +36,14 @@ bool FitCompare(GradientOptimizerContext &rf, double speed)
 
     SD_grad(rf);
     Eigen::VectorXd searchDir = rf.fc->grad;
+    Eigen::Map< Eigen::VectorXd > currEst(rf.fc->est, rf.fc->numParam);
     currEst = prevEst - speed / searchDir.norm() * searchDir;
-    memcpy(rf.fc->est, currEst.data(), (rf.fc->numParam) * sizeof(double));
     rf.fc->copyParamToModel();
     ComputeFit("steep", rf.fitMatrix, FF_COMPUTE_FIT, rf.fc);
     newFit = rf.fc->fit;
 
     if(newFit < refFit) return newFit < refFit;
-    memcpy(rf.fc->est, prevEst.data(), (rf.fc->numParam) * sizeof(double));
+    currEst = prevEst;
     rf.fc->copyParamToModel();
     return newFit < refFit;
 }
@@ -57,28 +57,27 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
 
 	while(iter < maxIter)
 	{
-        if(FitCompare(rf, priorSpeed)){
+        bool findit;
+        findit = FitCompare(rf, priorSpeed);
+        if (findit)
+        {
+            priorSpeed *=1.1;
+            findit = FitCompare(rf, priorSpeed);
+        }
+
+        int retries = 15;
+        double speed = priorSpeed;
+        while (--retries > 0 && !findit){
+            speed *= 0.2;
+            findit = FitCompare(rf, speed);
+        }
+        if(findit){
             iter++;
             SD_grad(rf);
         }
-        else
-        {
-            int retries = 15;
-            double speed = priorSpeed;
-            bool findit = FALSE;
-            while (--retries > 0){
-                speed *= 0.5;
-                if(FitCompare(rf, speed)){
-                    iter++;
-                    SD_grad(rf);
-                    findit = TRUE;
-                    break;
-                }
-            }
-            if(!findit){
-                mxLog("after %i iterations, cannot find better estimation along the gradient direction", iter);
-                return;
-            }
+        else{
+            mxLog("after %i iterations, cannot find better estimation along the gradient direction", iter);
+            return;
         }
     }
     return;
