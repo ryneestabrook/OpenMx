@@ -16,9 +16,11 @@ void SD_grad(GradientOptimizerContext &rf)
         memcpy(p2.data(), rf.fc->est, (rf.fc->numParam) * sizeof(double));
         p2[px] += eps;
         memcpy(rf.fc->est, p2.data(), (rf.fc->numParam) * sizeof(double));
+        rf.fc->copyParamToModel();
         ComputeFit("steep_fd", rf.fitMatrix, FF_COMPUTE_FIT, rf.fc);
         grad[px] = (rf.fc->fit - refFit) / eps;
         memcpy(rf.fc->est, p1.data(), (rf.fc->numParam) * sizeof(double));
+        rf.fc->copyParamToModel();
     }
     rf.fc->grad = grad;
 }
@@ -36,11 +38,13 @@ bool FitCompare(GradientOptimizerContext &rf, double speed)
     Eigen::VectorXd searchDir = rf.fc->grad;
     currEst = prevEst - speed / searchDir.norm() * searchDir;
     memcpy(rf.fc->est, currEst.data(), (rf.fc->numParam) * sizeof(double));
+    rf.fc->copyParamToModel();
     ComputeFit("steep", rf.fitMatrix, FF_COMPUTE_FIT, rf.fc);
     newFit = rf.fc->fit;
 
     if(newFit < refFit) return newFit < refFit;
     memcpy(rf.fc->est, prevEst.data(), (rf.fc->numParam) * sizeof(double));
+    rf.fc->copyParamToModel();
     return newFit < refFit;
 }
 
@@ -59,7 +63,7 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
         }
         else
         {
-            int retries = 8;
+            int retries = 15;
             double speed = priorSpeed;
             bool findit = FALSE;
             while (--retries > 0){
@@ -72,7 +76,7 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
                 }
             }
             if(!findit){
-                mxLog("cannot find better estimation along the gradient direction");
+                mxLog("after %i iterations, cannot find better estimation along the gradient direction", iter);
                 return;
             }
         }
