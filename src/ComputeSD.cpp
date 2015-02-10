@@ -7,12 +7,12 @@ void SD_grad(GradientOptimizerContext &rf)
     ComputeFit("steep_fd", rf.fitMatrix, FF_COMPUTE_FIT, rf.fc);
 
     const double refFit = rf.fc->fit;
-    const double eps = 1e-5;
+    const double eps = 1e-7;
     Eigen::VectorXd p1(rf.fc->numParam), p2(rf.fc->numParam), grad(rf.fc->numParam);
 
     memcpy(p1.data(), rf.fc->est, (rf.fc->numParam) * sizeof(double));
 
-    for (int px = 0; px < rf.fc->numParam; px++) {
+    for (int px = 0; px < int(rf.fc->numParam); px++) {
         memcpy(p2.data(), rf.fc->est, (rf.fc->numParam) * sizeof(double));
         p2[px] += eps;
         memcpy(rf.fc->est, p2.data(), (rf.fc->numParam) * sizeof(double));
@@ -44,6 +44,18 @@ bool FitCompare(GradientOptimizerContext &rf, double speed)
     Eigen::VectorXd searchDir = rf.fc->grad;
     Eigen::Map< Eigen::VectorXd > currEst(rf.fc->est, rf.fc->numParam);
     currEst = prevEst - speed / searchDir.norm() * searchDir;
+    currEst = currEst.cwiseMax(rf.solLB).cwiseMin(rf.solUB);
+
+    if(rf.verbose >= 2){
+        for(int index = 0; index < int(rf.fc->numParam); index++)
+        {
+            if(currEst[index] == rf.solLB[index])
+                mxLog("paramter %i hit lower bound", index);
+            if(currEst[index] == rf.solUB[index])
+                mxLog("paramter %i hit upper bound", index);
+        }
+    }
+
     rf.fc->copyParamToModel();
     ComputeFit("steep", rf.fitMatrix, FF_COMPUTE_FIT, rf.fc);
     newFit = rf.fc->fit;
@@ -59,8 +71,8 @@ bool FitCompare(GradientOptimizerContext &rf, double speed)
 void steepDES(GradientOptimizerContext &rf, int maxIter)
 {
 	int iter = 0;
-	double priorSpeed = 1.0, grad_tol = 1e-8;
-
+	double priorSpeed = 1.0, grad_tol = 1e-12;
+    rf.setupSimpleBounds();
 	while(iter < maxIter)
 	{
         bool findit;
