@@ -32,9 +32,15 @@ bool FitCompare(GradientOptimizerContext &rf, double speed)
 
     memcpy(prevEst.data(), rf.fc->est, (rf.fc->numParam) * sizeof(double));
     ComputeFit("steep", rf.fitMatrix, FF_COMPUTE_FIT, rf.fc);
+    if (isnan(rf.fc->fit))
+    {
+        rf.informOut = INFORM_STARTING_VALUES_INFEASIBLE;
+        return FALSE;
+    }
     refFit = rf.fc->fit;
 
     SD_grad(rf);
+
     Eigen::VectorXd searchDir = rf.fc->grad;
     Eigen::Map< Eigen::VectorXd > currEst(rf.fc->est, rf.fc->numParam);
     currEst = prevEst - speed / searchDir.norm() * searchDir;
@@ -53,12 +59,18 @@ bool FitCompare(GradientOptimizerContext &rf, double speed)
 void steepDES(GradientOptimizerContext &rf, int maxIter)
 {
 	int iter = 0;
-	double priorSpeed = 1.0;
+	double priorSpeed = 1.0, grad_tol = 1e-8;
 
 	while(iter < maxIter)
 	{
         bool findit;
         findit = FitCompare(rf, priorSpeed);
+        if (!isnan(rf.fc->fit) && rf.fc->grad.norm() / fabs(rf.fc->fit) < grad_tol)
+        {
+            rf.informOut = INFORM_CONVERGED_OPTIMUM;
+            mxLog("gradient tolerance achieved!");
+            break;
+        }
         if (findit)
         {
             priorSpeed *=1.1;
@@ -76,10 +88,23 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
             SD_grad(rf);
         }
         else{
-            mxLog("after %i iterations, cannot find better estimation along the gradient direction", iter);
-            return;
+            switch (iter)
+            {
+                case 0:
+                    mxLog("Infeasbile starting values!");
+                    break;
+                case 3000:
+                    rf.informOut = INFORM_ITERATION_LIMIT;
+                    mxLog("Maximum iteration achieved!");
+                    break;
+                default:
+                    rf.informOut = INFORM_CONVERGED_OPTIMUM;
+                    mxLog("after %i iterations, cannot find better estimation along the gradient direction", iter);
+            }
+            break;
         }
     }
+    mxLog("status code : %i", rf.informOut);
     return;
 }
 

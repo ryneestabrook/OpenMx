@@ -2,7 +2,7 @@
 #define __SteepDescent_H_
 
 #include <valarray>
-
+#include <math.h>
 #include "omxState.h"
 #include "omxFitFunction.h"
 #include "omxExportBackendState.h"
