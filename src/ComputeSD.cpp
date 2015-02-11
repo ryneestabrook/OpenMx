@@ -20,6 +20,7 @@ void SD_grad(GradientOptimizerContext &rf)
         ComputeFit("steep_fd", rf.fitMatrix, FF_COMPUTE_FIT, rf.fc);
         grad[px] = (rf.fc->fit - refFit) / eps;
         memcpy(rf.fc->est, p1.data(), (rf.fc->numParam) * sizeof(double));
+        rf.fc->fit = refFit;
         rf.fc->copyParamToModel();
     }
     rf.fc->grad = grad;
@@ -27,25 +28,20 @@ void SD_grad(GradientOptimizerContext &rf)
 
 bool FitCompare(GradientOptimizerContext &rf, double speed)
 {
-    Eigen::VectorXd prevEst(rf.fc->numParam);
-    double refFit, newFit;
+    Eigen::Map< Eigen::VectorXd > currEst(rf.fc->est, rf.fc->numParam);
+    Eigen::VectorXd prevEst = currEst;
 
-    memcpy(prevEst.data(), rf.fc->est, (rf.fc->numParam) * sizeof(double));
     ComputeFit("steep", rf.fitMatrix, FF_COMPUTE_FIT, rf.fc);
     if (isnan(rf.fc->fit))
     {
         rf.informOut = INFORM_STARTING_VALUES_INFEASIBLE;
         return FALSE;
     }
-    refFit = rf.fc->fit;
-
-    SD_grad(rf);
+    double refFit = rf.fc->fit;
 
     Eigen::VectorXd searchDir = rf.fc->grad;
-    Eigen::Map< Eigen::VectorXd > currEst(rf.fc->est, rf.fc->numParam);
-    currEst = prevEst - speed / searchDir.norm() * searchDir;
+    currEst = prevEst - speed * searchDir / searchDir.norm();
     currEst = currEst.cwiseMax(rf.solLB).cwiseMin(rf.solUB);
-
     if(rf.verbose >= 2){
         for(int index = 0; index < int(rf.fc->numParam); index++)
         {
@@ -58,7 +54,7 @@ bool FitCompare(GradientOptimizerContext &rf, double speed)
 
     rf.fc->copyParamToModel();
     ComputeFit("steep", rf.fitMatrix, FF_COMPUTE_FIT, rf.fc);
-    newFit = rf.fc->fit;
+    double newFit = rf.fc->fit;
 
     if(newFit < refFit) return newFit < refFit;
     currEst = prevEst;
@@ -75,19 +71,23 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
     rf.setupSimpleBounds();
 	while(iter < maxIter)
 	{
-        bool findit;
-        findit = FitCompare(rf, priorSpeed);
+        SD_grad(rf);
+
+        bool findit = FitCompare(rf, priorSpeed);
+        //rf.fc->log(FF_COMPUTE_GRADIENT);
+
         if (!isnan(rf.fc->fit) && rf.fc->grad.norm() / fabs(rf.fc->fit) < grad_tol)
         {
             rf.informOut = INFORM_CONVERGED_OPTIMUM;
-            mxLog("gradient tolerance achieved!");
+            mxLog("after %i iterations, gradient tolerance achieved!", iter);
             break;
         }
-        if (findit)
-        {
-            priorSpeed *=1.1;
-            findit = FitCompare(rf, priorSpeed);
-        }
+//        if (findit)
+//        {
+//            priorSpeed *=1.1;
+//            SD_grad(rf);
+//            findit = FitCompare(rf, priorSpeed);
+//        }
 
         int retries = 15;
         double speed = priorSpeed;
@@ -97,12 +97,12 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
         }
         if(findit){
             iter++;
-            SD_grad(rf);
         }
         else{
             switch (iter)
             {
                 case 0:
+                    rf.informOut = INFORM_STARTING_VALUES_INFEASIBLE;
                     mxLog("Infeasbile starting values!");
                     break;
                 case 3000:
@@ -119,4 +119,3 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
     mxLog("status code : %i", rf.informOut);
     return;
 }
-
