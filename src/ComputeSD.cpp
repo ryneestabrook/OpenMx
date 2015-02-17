@@ -98,6 +98,11 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
         }
         if(findit){
             iter++;
+            if(iter == maxIter){
+                rf.informOut = INFORM_ITERATION_LIMIT;
+                mxLog("Maximum iteration achieved!");
+                break;
+            }
         }
         else{
             switch (iter)
@@ -106,7 +111,7 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
                     rf.informOut = INFORM_STARTING_VALUES_INFEASIBLE;
                     mxLog("Infeasbile starting values!");
                     break;
-                case 3000:
+                case 9999:
                     rf.informOut = INFORM_ITERATION_LIMIT;
                     mxLog("Maximum iteration achieved!");
                     break;
