@@ -4,6 +4,7 @@
 
 void SD_grad(GradientOptimizerContext &rf)
 {
+    rf.fc->copyParamToModel();
     ComputeFit("steep_fd", rf.fitMatrix, FF_COMPUTE_FIT, rf.fc);
 
     const double refFit = rf.fc->fit;
