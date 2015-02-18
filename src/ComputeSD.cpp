@@ -98,6 +98,8 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
             findit = FitCompare(rf, speed);
         }
         if(findit){
+            mxLog("starting speed %f accepted %f after %d minor iterations", priorSpeed, speed, retries);
+            priorSpeed = speed * 1.1;
             iter++;
             if(iter == maxIter){
                 rf.informOut = INFORM_ITERATION_LIMIT;
