@@ -8,7 +8,7 @@ void SD_grad(GradientOptimizerContext &rf)
     ComputeFit("steep_fd", rf.fitMatrix, FF_COMPUTE_FIT, rf.fc);
 
     const double refFit = rf.fc->fit;
-    const double eps = 1e-7;
+    const double eps = 1e-9;
     Eigen::VectorXd p1(rf.fc->numParam), p2(rf.fc->numParam), grad(rf.fc->numParam);
 
     memcpy(p1.data(), rf.fc->est, (rf.fc->numParam) * sizeof(double));
@@ -68,7 +68,7 @@ bool FitCompare(GradientOptimizerContext &rf, double speed)
 void steepDES(GradientOptimizerContext &rf, int maxIter)
 {
 	int iter = 0;
-	double priorSpeed = 1.0, grad_tol = 1e-12;
+	double priorSpeed = 1.0;//, grad_tol = 1e-30;
     rf.setupSimpleBounds();
 	while(iter < maxIter)
 	{
@@ -77,12 +77,13 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
         bool findit = FitCompare(rf, priorSpeed);
         //rf.fc->log(FF_COMPUTE_GRADIENT);
 
-        if (!isnan(rf.fc->fit) && rf.fc->grad.norm() / fabs(rf.fc->fit) < grad_tol)
-        {
-            rf.informOut = INFORM_CONVERGED_OPTIMUM;
-            mxLog("after %i iterations, gradient tolerance achieved!", iter);
-            break;
-        }
+//        if (!isnan(rf.fc->fit) && rf.fc->grad.norm() / fabs(rf.fc->fit) < grad_tol)
+//        {
+//            rf.informOut = INFORM_CONVERGED_OPTIMUM;
+//            mxLog("after %i iterations, gradient tolerance achieved!", iter);
+//            break;
+//        }
+
 //        if (findit)
 //        {
 //            priorSpeed *=1.1;
@@ -90,10 +91,10 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
 //            findit = FitCompare(rf, priorSpeed);
 //        }
 
-        int retries = 15;
+        int retries = 200;
         double speed = priorSpeed;
         while (--retries > 0 && !findit){
-            speed *= 0.2;
+            speed *= 0.5;
             findit = FitCompare(rf, speed);
         }
         if(findit){
@@ -111,7 +112,7 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
                     rf.informOut = INFORM_STARTING_VALUES_INFEASIBLE;
                     mxLog("Infeasbile starting values!");
                     break;
-                case 9999:
+                case 39999:
                     rf.informOut = INFORM_ITERATION_LIMIT;
                     mxLog("Maximum iteration achieved!");
                     break;
