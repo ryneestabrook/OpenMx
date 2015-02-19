@@ -70,7 +70,11 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
 	int iter = 0;
 	double priorSpeed = 1.0;//, grad_tol = 1e-30;
     rf.setupSimpleBounds();
-	while(iter < maxIter  && !isErrorRaised())
+    rf.informOut = INFORM_UNINITIALIZED;
+
+    ComputeFit("steep", rf.fitMatrix, FF_COMPUTE_FIT, rf.fc);  // for fitmultigroup.R to check isErrorRaised()
+
+	while(iter < maxIter && !isErrorRaised())
 	{
         SD_grad(rf);
 
@@ -93,7 +97,7 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
 
         int retries = 200;
         double speed = priorSpeed;
-        while (--retries > 0 && !findit  && !isErrorRaised()){
+        while (--retries > 0 && !findit && !isErrorRaised()){
             speed *= 0.5;
             findit = FitCompare(rf, speed);
         }
