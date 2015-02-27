@@ -11,7 +11,7 @@
 
 bool FitCompare(GradientOptimizerContext &, double);
 
-void SD_grad(GradientOptimizerContext &);
+void SD_grad(GradientOptimizerContext &, double);
 
 void steepDES(GradientOptimizerContext &, int);
 

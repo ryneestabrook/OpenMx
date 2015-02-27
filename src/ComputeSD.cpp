@@ -2,13 +2,13 @@
 
 #include "ComputeSD.h"
 
-void SD_grad(GradientOptimizerContext &rf)
+void SD_grad(GradientOptimizerContext &rf, double eps)
 {
     rf.fc->copyParamToModel();
     ComputeFit("steep_fd", rf.fitMatrix, FF_COMPUTE_FIT, rf.fc);
 
     const double refFit = rf.fc->fit;
-    const double eps = 1e-9;
+    //const double eps = 1e-9;
     Eigen::VectorXd p1(rf.fc->numParam), p2(rf.fc->numParam), grad(rf.fc->numParam);
 
     memcpy(p1.data(), rf.fc->est, (rf.fc->numParam) * sizeof(double));
@@ -76,9 +76,17 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
 
     ComputeFit("steep", rf.fitMatrix, FF_COMPUTE_FIT, rf.fc);  // for fitmultigroup.R to check isErrorRaised()
 
+    SD_grad(rf, 1e-9);
+ //   Eigen::VectorXd oldgrad;// = rf.fc->grad / rf.fc->grad.norm();
+
 	while(iter < maxIter && !isErrorRaised())
 	{
-        SD_grad(rf);
+
+        //
+        //SD_grad(rf);
+
+
+
         if(rf.fc->grad.norm() == 0)
         {
             rf.informOut = INFORM_CONVERGED_OPTIMUM;
@@ -110,6 +118,21 @@ void steepDES(GradientOptimizerContext &rf, int maxIter)
         if(findit){
             priorSpeed = speed * 1.1;
             iter++;
+
+          //  oldgrad = rf.fc->grad / rf.fc->grad.norm();
+            if (speed < 1e-9)
+            {
+                SD_grad(rf, speed * 1e-2);
+            //    mxLog("aha!");
+            }
+            else
+            {
+                SD_grad(rf, 1e-9);
+            }
+
+            //double graddot = ;
+        //    mxLog("At %i iterations, the dot product of gradient is %f", iter, oldgrad.dot(rf.fc->grad / rf.fc->grad.norm()));
+
             if(iter == maxIter){
                 rf.informOut = INFORM_ITERATION_LIMIT;
                 mxLog("Maximum iteration achieved!");
