@@ -106,7 +106,7 @@ void FitContext::analyzeHessianBlock(HessianBlock *hb)
 void FitContext::analyzeHessian()
 {
 	// If we knew the minBlockSize was large then we wouldn't even
-	// try to build merge blocks. 
+	// try to build merge blocks.
 	// If maxBlockSize is greater than some threshold then we should
 	// also give up.
 
@@ -388,7 +388,7 @@ SEXP sparseInvert_wrapper(SEXP Rmat)
 
 	Eigen::SparseMatrix<double> imat(rows,cols);
 	if (soleymani2013(mat, imat)) Rf_error("Invert failed");
-	
+
 	SEXP ret;
 	Rf_protect(ret = Rf_allocMatrix(REALSXP, rows, cols));
 	double *retData = REAL(ret);
@@ -404,7 +404,7 @@ SEXP sparseInvert_wrapper(SEXP Rmat)
 void FitContext::testMerge()
 {
 	const int UseId = 2;
-	
+
 	analyzeHessian();
 
 	//std::cout << "block count " << allBlocks.size() << std::endl;
@@ -479,7 +479,7 @@ bool FitContext::refreshSparseIHess()
 			size_t size = hb->mmat.rows();
 
 			InvertSymmetricNR(hb->mmat, hb->imat);
-		
+
 			for (size_t col=0; col < size; ++col) {
 				for (size_t row=0; row <= col; ++row) {
 					int vr = hb->vars[row];
@@ -607,7 +607,7 @@ void HessianBlock::addSubBlocks()
 
 	for (size_t bx=0; bx < subBlocks.size(); ++bx) {
 		HessianBlock *sb = subBlocks[bx];
-		
+
 		//std::cout << "subblock " << sb->id << "\n" << sb->mmat << std::endl;
 
 		size_t numVars = sb->vars.size();
@@ -624,7 +624,7 @@ void HessianBlock::addSubBlocks()
 			}
 		}
 	}
-	
+
 	//std::cout << "result " << id << "\n" << mmat << std::endl;
 }
 
@@ -768,7 +768,7 @@ void FitContext::updateParent()
 			}
 		}
 	}
-	
+
 	// pda(est, 1, svars);
 	// pda(parent->est, 1, dvars);
 }
@@ -973,7 +973,7 @@ omxMatrix *FitContext::lookupDuplicate(omxMatrix* element)
 		return(state->matrixList[-matrixNumber - 1]);
 	}
 }
-	
+
 double *FitContext::take(int want)
 {
 	if (!(want & (wanted | FF_COMPUTE_ESTIMATE))) {
@@ -1138,7 +1138,7 @@ public:
 void EMAccel::recordEstimate(const int px, const double newEst)
 {
 	omxFreeVar *fv = fc->varGroup->vars[px];
-	
+
 	if (verbose >= 4) {
 		std::string buf;
 		buf += string_snprintf("EMAccel: %d~%s %.4f -> %.4f",
@@ -2793,6 +2793,17 @@ void GradientOptimizerContext::copyBounds()
 		solLB[index] = varGroup->vars[index]->lbound;
 		solUB[index] = varGroup->vars[index]->ubound;
 	}
+
+	omxState *globalState = fc->state;
+	int eqn = 0;
+    for(int j = 0; j < globalState->numConstraints; j++) {
+        if (globalState->conList[j].opCode == omxConstraint::EQUALITY) {
+            eqn += globalState->conList[j].size;
+        }
+    }
+	int nineqn = globalState->ncnln - eqn;
+	equality.resize(eqn);
+	inequality.resize(nineqn);
 }
 
 void GradientOptimizerContext::setupSimpleBounds()
@@ -2807,17 +2818,6 @@ void GradientOptimizerContext::setupIneqConstraintBounds()
 	solLB.resize(fc->numParam);
 	solUB.resize(fc->numParam);
 	copyBounds();
-
-	omxState *globalState = fc->state;
-	int eqn = 0;
-	for(int j = 0; j < globalState->numConstraints; j++) {
-		if (globalState->conList[j].opCode == omxConstraint::EQUALITY) {
-			eqn += globalState->conList[j].size;
-		}
-	}
-	int nineqn = globalState->ncnln - eqn;
-	equality.resize(eqn);
-	inequality.resize(nineqn);
 };
 
 void GradientOptimizerContext::setupAllBounds()
